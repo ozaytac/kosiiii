@@ -115,13 +115,39 @@
         means.push(mean);
       }
 
-      // Histogram çiz
-      Plotly.react("histogram-plot", [{
+      // Histogram verileri hesapla
+      const traceHistogram = {
         x: means,
-        type: "histogram",
-        marker: { opacity: 0.7 },
+        type: 'histogram',
+        marker: {
+          color: 'rgba(0, 123, 255, 0.7)', // Açık mavi bar
+          line: {
+            color: 'rgba(0, 0, 139, 1)', // Koyu mavi kenar çizgisi
+            width: 1
+          }
+        },
         name: `Örnek Ortalamaları (n=${sampleSize})`
-      }], {
+      };
+
+      // Yoğunluk çizgisi ekle
+      const bins = Array.from({ length: 50 }, (_, i) => Math.min(...means) + i * (Math.max(...means) - Math.min(...means)) / 49);
+      const densities = bins.map(bin => {
+        const h = 1.06 * Math.sqrt(sampleSize) / Math.pow(1000, 0.2); // Bandwidth (Silverman)
+        return means.reduce((sum, x) => sum + Math.exp(-0.5 * Math.pow((x - bin) / h, 2)) / (Math.sqrt(2 * Math.PI) * h), 0) / 1000;
+      });
+
+      const traceDensity = {
+        x: bins,
+        y: densities,
+        type: 'scatter',
+        mode: 'lines+markers',
+        marker: { color: 'green' }, // Yeşil yoğunluk çizgisi
+        line: { color: 'green', width: 2 },
+        name: 'Yoğunluk Fonksiyonu'
+      };
+
+      // Grafikleri çiz
+      Plotly.react("histogram-plot", [traceHistogram, traceDensity], {
         title: `Örnek Ortalamalarının Histogramı (n=${sampleSize})`,
         xaxis: { title: "Örnek Ortalama" },
         yaxis: { title: "Frekans" }
