@@ -19,10 +19,11 @@
     }
     .container {
       display: flex;
+      justify-content: space-around;
       flex-wrap: wrap;
     }
     .plot {
-      width: 100%;
+      width: 45%;
       margin: 20px 0;
     }
     .controls, .sampling-controls {
@@ -51,106 +52,142 @@
     <p>Öğrenci: N23235557 - Mustafa Özaytaç</p>
   </header>
 
-  <h2>Örnekleme ve Histogramlar</h2>
-  <div class="sampling-controls">
-    <button onclick="generateAndShowSamples()">Örnekleri Görselleştir</button>
+  <h2>Cauchy Dağılımı Görselleştiricisi</h2>
+  <div class="controls">
+    <label for="x0">Konum (x₀):</label>
+    <input type="number" id="x0" value="0" step="0.1">
+    <label for="gamma">Ölçek (γ):</label>
+    <input type="number" id="gamma" value="1" step="0.1" min="0.1">
+    <button onclick="updatePlots()">Güncelle</button>
   </div>
 
-  <div id="histogram-plot" class="plot"></div>
+  <div class="container">
+    <div id="pdf-plot" class="plot"></div>
+    <div id="cdf-plot" class="plot"></div>
+  </div>
+
+  <h2>Örnekleme ve Histogramlar</h2>
+  <div class="sampling-controls">
+    <button onclick="generateSamples(5)">1000 Örnek Oluştur (n=5)</button>
+    <button onclick="generateSamples(10)">1000 Örnek Oluştur (n=10)</button>
+    <button onclick="generateSamples(30)">1000 Örnek Oluştur (n=30)</button>
+    <button onclick="generateSamples(50)">1000 Örnek Oluştur (n=50)</button>
+  </div>
+
+  <div class="container">
+    <div id="histogram-plot" class="plot"></div>
+  </div>
 
   <script>
-    // Fixed seed random number generator
-    function seededRandom(seed) {
-      let value = seed;
-      return () => {
-        value = (value * 9301 + 49297) % 233280;
-        return value / 233280;
-      };
+    // Cauchy PDF fonksiyonu
+    function cauchyPDF(x, x0, gamma) {
+      return (1 / Math.PI) * (gamma / ((x - x0) ** 2 + gamma ** 2));
     }
 
-    // Generate random samples from Cauchy distribution
-    function generateRandomCauchy(x0, gamma, random) {
-      const u = random(); // Uniform random variable
+    // Cauchy CDF fonksiyonu
+    function cauchyCDF(x, x0, gamma) {
+      return 0.5 + (1 / Math.PI) * Math.atan((x - x0) / gamma);
+    }
+
+    // Rastgele Cauchy örnekleri oluştur
+    function generateRandomCauchy(x0, gamma) {
+      const u = Math.random(); // Uniform rastgele değişken
       return x0 + gamma * Math.tan(Math.PI * (u - 0.5));
     }
 
-    // Generate samples
-    function generateSamples(sampleSize, x0, gamma, random) {
-      const means = [];
-      for (let i = 0; i < 10000; i++) {
-        const sample = Array.from({ length: sampleSize }, () => generateRandomCauchy(x0, gamma, random));
+    // Veri noktaları oluştur
+    function generateData(x0, gamma) {
+      const x = Array.from({ length: 500 }, (_, i) => -10 + (i * 20) / 499);
+      const pdf = x.map(xi => cauchyPDF(xi, x0, gamma));
+      const cdf = x.map(xi => cauchyCDF(xi, x0, gamma));
+      return { x, pdf, cdf };
+    }
+
+    // Örnekler oluştur ve histogram çiz
+function generateSamples(sampleSize) {
+    const x0 = parseFloat(document.getElementById("x0").value);
+    const gamma = parseFloat(document.getElementById("gamma").value);
+
+    const means = [];
+    for (let i = 0; i < 10000; i++) { // Increased from 1000 to 10000
+        const sample = Array.from({ length: sampleSize }, () => generateRandomCauchy(x0, gamma));
         const mean = sample.reduce((sum, val) => sum + val, 0) / sampleSize;
         means.push(mean);
-      }
-      return means;
     }
 
-    // Kernel density estimation
-    function kernelDensityEstimation(data, bins) {
-      const bandwidth = 1.06 * Math.std(data) / Math.pow(data.length, 0.2); // Silverman's rule
-      return bins.map(bin => {
-        return data.reduce((sum, x) => sum + Math.exp(-0.5 * Math.pow((x - bin) / bandwidth, 2)) / (Math.sqrt(2 * Math.PI) * bandwidth), 0) / data.length;
-      });
-    }
-
-    // Visualize histograms
-    function generateAndShowSamples() {
-      const x0 = 0; // Location parameter
-      const gamma = 1; // Scale parameter
-      const random = seededRandom(42); // Fixed seed
-
-      // Generate samples for different sizes
-      const sizes = [5, 10, 30, 50];
-      const allMeans = sizes.map(size => generateSamples(size, x0, gamma, random));
-
-      const traces = [];
-      const bins = Array.from({ length: 50 }, (_, i) => -10 + i * 20 / 49); // Bin edges
-
-      allMeans.forEach((means, index) => {
-        // Histogram trace
-        traces.push({
-          x: means,
-          type: 'histogram',
-          marker: {
-            color: `rgba(${50 + index * 50}, 123, 255, 0.7)`, // Dynamic color
-            line: { color: 'black', width: 1 }
-          },
-          name: `n=${sizes[index]}`,
-          xaxis: `x${index + 1}`,
-          yaxis: `y${index + 1}`,
-          opacity: 0.7
-        });
-
-        // KDE trace
-        const densities = kernelDensityEstimation(means, bins);
-        traces.push({
-          x: bins,
-          y: densities,
-          type: 'scatter',
-          mode: 'lines+markers',
-          line: { color: 'green', width: 2 },
-          name: `Yoğunluk n=${sizes[index]}`,
-          xaxis: `x${index + 1}`,
-          yaxis: `y${index + 1}`
-        });
-      });
-
-      // Layout with subplots
-      const layout = {
-        grid: { rows: 2, columns: 2, pattern: 'independent' },
-        title: 'Farklı Örnek Büyüklüklerine Göre Histogramlar ve Yoğunluklar',
-        xaxis: { title: 'Örnek Ortalama' },
-        yaxis: { title: 'Frekans' }
-      };
-
-      Plotly.newPlot('histogram-plot', traces, layout);
-    }
-
-    // Utility to calculate standard deviation
-    Math.std = function(arr) {
-      const mean = arr.reduce((sum, x) => sum + x, 0) / arr.length;
-      return Math.sqrt(arr.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / arr.length);
+    // Remaining code remains unchanged
+    const traceHistogram = {
+        x: means,
+        type: 'histogram',
+        marker: {
+            color: 'rgba(0, 123, 255, 0.7)',
+            line: {
+                color: 'rgba(0, 0, 139, 1)',
+                width: 1
+            }
+        },
+        name: `Örnek Ortalamaları (n=${sampleSize})`
     };
+
+    const bins = Array.from({ length: 50 }, (_, i) => Math.min(...means) + i * (Math.max(...means) - Math.min(...means)) / 49);
+    const densities = bins.map(bin => {
+        const h = 1.06 * Math.sqrt(sampleSize) / Math.pow(10000, 0.2); // Updated for 10,000 samples
+        return means.reduce((sum, x) => sum + Math.exp(-0.5 * Math.pow((x - bin) / h, 2)) / (Math.sqrt(2 * Math.PI) * h), 0) / 10000;
+    });
+
+    const traceDensity = {
+        x: bins,
+        y: densities,
+        type: 'scatter',
+        mode: 'lines+markers',
+        marker: { color: 'green' },
+        line: { color: 'green', width: 2 },
+        name: 'Yoğunluk Fonksiyonu'
+    };
+
+    Plotly.react("histogram-plot", [traceHistogram, traceDensity], {
+        title: `Örnek Ortalamalarının Histogramı (n=${sampleSize})`,
+        xaxis: { title: "Örnek Ortalama" },
+        yaxis: { title: "Frekans" }
+    });
+}
+
+    // Grafik güncelle
+    function updatePlots() {
+      const x0 = parseFloat(document.getElementById("x0").value);
+      const gamma = parseFloat(document.getElementById("gamma").value);
+
+      const { x, pdf, cdf } = generateData(x0, gamma);
+
+      // PDF grafiğini güncelle
+      Plotly.react("pdf-plot", [{
+        x: x,
+        y: pdf,
+        type: "scatter",
+        mode: "lines",
+        name: "PDF"
+      }], {
+        title: "Cauchy Olasılık Yoğunluk Fonksiyonu (PDF)",
+        xaxis: { title: "x" },
+        yaxis: { title: "PDF" }
+      });
+
+      // CDF grafiğini güncelle
+      Plotly.react("cdf-plot", [{
+        x: x,
+        y: cdf,
+        type: "scatter",
+        mode: "lines",
+        name: "CDF"
+      }], {
+        title: "Cauchy Kümülatif Dağılım Fonksiyonu (CDF)",
+        xaxis: { title: "x" },
+        yaxis: { title: "CDF" }
+      });
+    }
+
+    // İlk render
+    updatePlots();
   </script>
 </body>
 </html>
