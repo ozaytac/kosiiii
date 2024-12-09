@@ -109,7 +109,7 @@
       const gamma = parseFloat(document.getElementById("gamma").value);
 
       const means = [];
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < 1000; i++) {
         const sample = Array.from({ length: sampleSize }, () => generateRandomCauchy(x0, gamma));
         const mean = sample.reduce((sum, val) => sum + val, 0) / sampleSize;
         means.push(mean);
