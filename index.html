@@ -104,53 +104,29 @@
     }
 
     // Örnekler oluştur ve histogram çiz
-function generateSamples(sampleSize) {
-    const x0 = parseFloat(document.getElementById("x0").value);
-    const gamma = parseFloat(document.getElementById("gamma").value);
+    function generateSamples(sampleSize) {
+      const x0 = parseFloat(document.getElementById("x0").value);
+      const gamma = parseFloat(document.getElementById("gamma").value);
 
-    const means = [];
-    for (let i = 0; i < 10000; i++) { // Increased from 1000 to 10000
+      const means = [];
+      for (let i = 0; i < 100; i++) {
         const sample = Array.from({ length: sampleSize }, () => generateRandomCauchy(x0, gamma));
         const mean = sample.reduce((sum, val) => sum + val, 0) / sampleSize;
         means.push(mean);
-    }
+      }
 
-    // Remaining code remains unchanged
-    const traceHistogram = {
+      // Histogram çiz
+      Plotly.react("histogram-plot", [{
         x: means,
-        type: 'histogram',
-        marker: {
-            color: 'rgba(0, 123, 255, 0.7)',
-            line: {
-                color: 'rgba(0, 0, 139, 1)',
-                width: 1
-            }
-        },
+        type: "histogram",
+        marker: { opacity: 0.7 },
         name: `Örnek Ortalamaları (n=${sampleSize})`
-    };
-
-    const bins = Array.from({ length: 50 }, (_, i) => Math.min(...means) + i * (Math.max(...means) - Math.min(...means)) / 49);
-    const densities = bins.map(bin => {
-        const h = 1.06 * Math.sqrt(sampleSize) / Math.pow(10000, 0.2); // Updated for 10,000 samples
-        return means.reduce((sum, x) => sum + Math.exp(-0.5 * Math.pow((x - bin) / h, 2)) / (Math.sqrt(2 * Math.PI) * h), 0) / 10000;
-    });
-
-    const traceDensity = {
-        x: bins,
-        y: densities,
-        type: 'scatter',
-        mode: 'lines+markers',
-        marker: { color: 'green' },
-        line: { color: 'green', width: 2 },
-        name: 'Yoğunluk Fonksiyonu'
-    };
-
-    Plotly.react("histogram-plot", [traceHistogram, traceDensity], {
+      }], {
         title: `Örnek Ortalamalarının Histogramı (n=${sampleSize})`,
         xaxis: { title: "Örnek Ortalama" },
         yaxis: { title: "Frekans" }
-    });
-}
+      });
+    }
 
     // Grafik güncelle
     function updatePlots() {
