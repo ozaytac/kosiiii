@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cauchy Distribution Visualization</title>
+  <title>Cauchy Distribution Visualizer with Sampling</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <style>
     body {
@@ -13,17 +13,20 @@
     .container {
       display: flex;
       justify-content: space-around;
+      flex-wrap: wrap;
     }
     .plot {
       width: 45%;
+      margin: 20px 0;
     }
-    .controls {
+    .controls, .sampling-controls {
       margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>Cauchy Distribution Visualizer</h1>
+  <h1>Cauchy Distribution Visualizer with Sampling</h1>
+
   <div class="controls">
     <label for="x0">Location (x₀):</label>
     <input type="number" id="x0" value="0" step="0.1">
@@ -31,9 +34,22 @@
     <input type="number" id="gamma" value="1" step="0.1" min="0.1">
     <button onclick="updatePlots()">Update</button>
   </div>
+
   <div class="container">
     <div id="pdf-plot" class="plot"></div>
     <div id="cdf-plot" class="plot"></div>
+  </div>
+
+  <h2>Sampling and Histograms</h2>
+  <div class="sampling-controls">
+    <button onclick="generateSamples(5)">Generate 1000 Samples (n=5)</button>
+    <button onclick="generateSamples(10)">Generate 1000 Samples (n=10)</button>
+    <button onclick="generateSamples(30)">Generate 1000 Samples (n=30)</button>
+    <button onclick="generateSamples(50)">Generate 1000 Samples (n=50)</button>
+  </div>
+
+  <div class="container">
+    <div id="histogram-plot" class="plot"></div>
   </div>
 
   <script>
@@ -47,12 +63,43 @@
       return 0.5 + (1 / Math.PI) * Math.atan((x - x0) / gamma);
     }
 
+    // Generate random samples from Cauchy distribution
+    function generateRandomCauchy(x0, gamma) {
+      const u = Math.random(); // Uniform random variable
+      return x0 + gamma * Math.tan(Math.PI * (u - 0.5));
+    }
+
     // Generate data points
     function generateData(x0, gamma) {
-      const x = Array.from({ length: 500 }, (_, i) => -10 + (i * 20) / 499); // X range from -10 to 10
+      const x = Array.from({ length: 500 }, (_, i) => -10 + (i * 20) / 499);
       const pdf = x.map(xi => cauchyPDF(xi, x0, gamma));
       const cdf = x.map(xi => cauchyCDF(xi, x0, gamma));
       return { x, pdf, cdf };
+    }
+
+    // Generate samples and plot histogram
+    function generateSamples(sampleSize) {
+      const x0 = parseFloat(document.getElementById("x0").value);
+      const gamma = parseFloat(document.getElementById("gamma").value);
+
+      const means = [];
+      for (let i = 0; i < 1000; i++) {
+        const sample = Array.from({ length: sampleSize }, () => generateRandomCauchy(x0, gamma));
+        const mean = sample.reduce((sum, val) => sum + val, 0) / sampleSize;
+        means.push(mean);
+      }
+
+      // Plot histogram
+      Plotly.react("histogram-plot", [{
+        x: means,
+        type: "histogram",
+        marker: { opacity: 0.7 },
+        name: `Sample Means (n=${sampleSize})`
+      }], {
+        title: `Histogram of Sample Means (n=${sampleSize})`,
+        xaxis: { title: "Sample Mean" },
+        yaxis: { title: "Frequency" }
+      });
     }
 
     // Update plots
